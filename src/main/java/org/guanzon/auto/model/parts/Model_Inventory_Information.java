@@ -55,6 +55,12 @@ public class Model_Inventory_Information implements GEntity {
             poEntity.moveToInsertRow();
 
             MiscUtil.initRowSet(poEntity);
+            poEntity.updateDouble("nUnitPrce",0.00);
+            poEntity.updateDouble("nSelPrice",0.00);
+            poEntity.updateDouble("nDiscLev1",0.00);
+            poEntity.updateDouble("nDiscLev2",0.00);
+            poEntity.updateDouble("nDiscLev3",0.00);
+            poEntity.updateDouble("nDealrDsc",0.00);
             poEntity.updateString("cRecdStat", RecordStatus.ACTIVE);
 
             poEntity.insertRow();
@@ -219,7 +225,7 @@ public class Model_Inventory_Information implements GEntity {
         pnEditMode = EditMode.ADDNEW;
 
         //replace with the primary key column info
-        setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", false, poGRider.getConnection(), poGRider.getBranchCode()));
+        setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()+"ST"));
 
         poJSON = new JSONObject();
         poJSON.put("result", "success");
@@ -276,10 +282,11 @@ public class Model_Inventory_Information implements GEntity {
 
         if (pnEditMode == EditMode.ADDNEW || pnEditMode == EditMode.UPDATE) {
             String lsSQL;
-            String lsExclude = "sInvTypDs";
+            String lsExclude = "sBrandNme»sMeasurNm»sInvTypDs»sCatgeDs1";
+            
             if (pnEditMode == EditMode.ADDNEW) {
                 //replace with the primary key column info
-                setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", false, poGRider.getConnection(), poGRider.getBranchCode()));
+                setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()+"ST"));
                 setModified(poGRider.getUserID());
                 setModifiedDte(poGRider.getServerDate());
                 

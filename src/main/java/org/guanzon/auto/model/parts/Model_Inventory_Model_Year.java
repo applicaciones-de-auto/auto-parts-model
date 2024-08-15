@@ -55,7 +55,6 @@ public class Model_Inventory_Model_Year implements GEntity {
             poEntity.moveToInsertRow();
 
             MiscUtil.initRowSet(poEntity);
-            poEntity.updateString("cRecdStat", RecordStatus.ACTIVE);
 
             poEntity.insertRow();
             poEntity.moveToCurrentRow();
@@ -217,29 +216,34 @@ public class Model_Inventory_Model_Year implements GEntity {
     @Override
     public JSONObject newRecord() {
         pnEditMode = EditMode.ADDNEW;
-
-        //replace with the primary key column info
-        //setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()));
-
+        
         poJSON = new JSONObject();
         poJSON.put("result", "success");
         return poJSON;
     }
 
+    @Override
+    public JSONObject openRecord(String string) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     /**
      * Opens a record.
      *
-     * @param fsCondition - filter values
+     * @param fsValue - filter values
+     * @param fsValue1 - filter values
+     * @param fnValue2 - filter values2
      * @return result as success/failed
      */
-    @Override
-    public JSONObject openRecord(String fsCondition) {
+    public JSONObject openRecord(String fsValue, String fsValue1, Integer fnValue2) {
         poJSON = new JSONObject();
 
-        String lsSQL = MiscUtil.makeSelect(this);
+        String lsSQL = getSQL();
 
         //replace the condition based on the primary key column of the record
-        lsSQL = MiscUtil.addCondition(lsSQL, " sStockIDx = " + SQLUtil.toSQL(fsCondition));
+        lsSQL = MiscUtil.addCondition(lsSQL, " a.sStockIDx = " + SQLUtil.toSQL(fsValue)
+                                               + " AND a.sModelCde = " + SQLUtil.toSQL(fsValue1)
+                                               + " AND a.nYearModl = " + SQLUtil.toSQL(fnValue2));
 
         ResultSet loRS = poGRider.executeQuery(lsSQL);
 
@@ -276,11 +280,10 @@ public class Model_Inventory_Model_Year implements GEntity {
 
         if (pnEditMode == EditMode.ADDNEW || pnEditMode == EditMode.UPDATE) {
             String lsSQL;
+            String lsExclude = "sModelDsc»sMakeIDxx»sMakeDesc";
             if (pnEditMode == EditMode.ADDNEW) {
-                //replace with the primary key column info
-                //setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()));
-
-                lsSQL = makeSQL();
+                
+                lsSQL = MiscUtil.makeSQL(this, lsExclude);
 
                 if (!lsSQL.isEmpty()) {
                     if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
@@ -298,11 +301,11 @@ public class Model_Inventory_Model_Year implements GEntity {
                 Model_Inventory_Model_Year loOldEntity = new Model_Inventory_Model_Year(poGRider);
 
                 //replace with the primary key column info
-                JSONObject loJSON = loOldEntity.openRecord(this.getStockID());
+                JSONObject loJSON = loOldEntity.openRecord(this.getStockID(),this.getModelCde(), this.getYearModl());
 
                 if ("success".equals((String) loJSON.get("result"))) {
                     //replace the condition based on the primary key column of the record
-                    lsSQL = MiscUtil.makeSQL(this, loOldEntity, "sStockIDx = " + SQLUtil.toSQL(this.getStockID()));
+                    lsSQL = MiscUtil.makeSQL(this, loOldEntity, " sStockIDx = " + SQLUtil.toSQL(this.getStockID()) + " AND sModelCde = " + SQLUtil.toSQL(this.getModelCde()) + "AND nYearModl = " + SQLUtil.toSQL(this.getYearModl()),lsExclude);
 
                     if (!lsSQL.isEmpty()) {
                         if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
@@ -327,6 +330,27 @@ public class Model_Inventory_Model_Year implements GEntity {
             return poJSON;
         }
 
+        return poJSON;
+    }
+    
+    
+    public JSONObject deleteRecord(){
+        poJSON = new JSONObject();
+        
+        String lsSQL = " DELETE FROM "+getTable()+" WHERE "
+                    + " sStockIDx = " + SQLUtil.toSQL(this.getStockID())
+                    + " AND sModelCde = " + SQLUtil.toSQL(this.getModelCde())
+                    + " AND nYearModl = " + SQLUtil.toSQL(this.getYearModl());
+        if (!lsSQL.isEmpty()) {
+            if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
+                poJSON.put("result", "success");
+                poJSON.put("message", "Record deleted successfully.");
+            } else {
+                poJSON.put("result", "error");
+                poJSON.put("continue", true);
+                poJSON.put("message", poGRider.getErrMsg());
+            }
+        }
         return poJSON;
     }
 
@@ -385,18 +409,19 @@ public class Model_Inventory_Model_Year implements GEntity {
         return MiscUtil.makeSelect(this);
     }
     
-    private String getSQL(){    
-        return " SELECT "
-               + "   IFNULL(a.sStockIDx,'') sStockIDx " //1
-               + " , IFNULL(a.sModelCde,'') sModelCde " //2
-               + " , a.nYearModl" //3
-               + " , IFNULL(c.sMakeDesc,'') sMakeDesc " //4
-               + " , IFNULL(b.sModelDsc,'') sModelDsc " //5
-               + " FROM inventory_model_year a "
-               + " LEFT JOIN vehicle_model b ON b.sModelIDx = a.sModelCde "
-               + " LEFT JOIN vehicle_make c ON c.sMakeIDxx = b.sMakeIDxx ";
-    }                                                                            
-
+    public String getSQL(){
+        return    " SELECT "                                                 
+                + "    a.sStockIDx "                                         
+                + "  , a.sModelCde "                                          
+                + "  , a.nYearModl "                                        
+                + "  , b.sModelDsc "                                         
+                + "  , c.sMakeIDxx "                                         
+                + "  , c.sMakeDesc "                                         
+                + " FROM inventory_model_year a "                                 
+                + " LEFT JOIN vehicle_model b ON b.sModelCde = a.sModelCde " 
+                + " LEFT JOIN vehicle_make c ON c.sMakeIDxx = b.sMakeIDxx  "   ;
+    }
+    
     /**
      * Description: Sets the ID of this record.
      *
@@ -414,8 +439,8 @@ public class Model_Inventory_Model_Year implements GEntity {
         return (String) getValue("sStockIDx");
     }
     
-     /**
-     * Description: Sets the ID of this record.
+    /**
+     * Description: Sets the Value of this record.
      *
      * @param fnValue
      * @return result as success/failed
@@ -425,14 +450,14 @@ public class Model_Inventory_Model_Year implements GEntity {
     }
 
     /**
-     * @return The ID of this record.
+     * @return The Value of this record.
      */
     public Integer getYearModl() {
-        return (Integer) getValue("nYearModl");
+        return Integer.parseInt(String.valueOf(getValue("nYearModl")));
     }
     
     /**
-     * Description: Sets the Value of this record.
+     * Description: Sets the ID of this record.
      *
      * @param fsValue
      * @return result as success/failed
@@ -442,14 +467,14 @@ public class Model_Inventory_Model_Year implements GEntity {
     }
 
     /**
-     * @return The Value of this record.
+     * @return The ID of this record.
      */
     public String getModelCde() {
         return (String) getValue("sModelCde");
     }
     
     /**
-     * Description: Sets the Value of this record.
+     * Description: Sets the ID of this record.
      *
      * @param fsValue
      * @return result as success/failed
@@ -459,10 +484,27 @@ public class Model_Inventory_Model_Year implements GEntity {
     }
 
     /**
-     * @return The Value of this record.
+     * @return The ID of this record.
      */
     public String getModelDsc() {
         return (String) getValue("sModelDsc");
+    }
+    
+    /**
+     * Description: Sets the Value of this record.
+     *
+     * @param fsValue
+     * @return result as success/failed
+     */
+    public JSONObject setMakeID(String fsValue) {
+        return setValue("sMakeIDxx", fsValue);
+    }
+
+    /**
+     * @return The Value of this record.
+     */
+    public String getMakeID() {
+        return (String) getValue("sMakeIDxx");
     }
     
     /**
@@ -481,85 +523,5 @@ public class Model_Inventory_Model_Year implements GEntity {
     public String getMakeDesc() {
         return (String) getValue("sMakeDesc");
     }
-    
-    /**
-     * Description: Sets the Value of this record.
-     *
-     * @param fsValue
-     * @return result as success/failed
-     */
-    public JSONObject setRecdStat(String fsValue) {
-        return setValue("cRecdStat", fsValue);
-    }
-
-    /**
-     * @return The Value of this record.
-     */
-    public String gsetRecdStat() {
-        return (String) getValue("cRecdStat");
-    }
-    
-    /**
-     * Sets record as active.
-     *
-     * @param fbValue
-     * @return result as success/failed
-     */
-    public JSONObject setActive(boolean fbValue) {
-        return setValue("cRecdStat", fbValue ? "1" : "0");
-    }
-
-    /**
-     * @return If record is active.
-     */
-    public boolean isActive() {
-        return ((String) getValue("cRecdStat")).equals("1");
-    }
-    
-    /**
-     * Description: Sets the Value of this record.
-     *
-     * @param fsValue
-     * @return result as success/failed
-     
-    public JSONObject setModified(String fsValue) {
-        return setValue("sModified", fsValue);
-    }*/
-
-    /**
-     * @return The Value of this record.
-     
-    public String getModified() {
-        return (String) getValue("sModified");
-    }*/
-    
-    /**
-     * Sets the date and time the record was modified.
-     *
-     * @param fdValue
-     * @return result as success/failed
-    
-    public JSONObject setModifiedDte(Date fdValue) {
-        return setValue("dModified", fdValue);
-    } */
-
-    /**
-     * @return The date and time the record was modified.
-    
-    public Date getModifiedDte() {
-        return (Date) getValue("dModified");
-    } */
-    
-    /**
-     * Description: Sets the Value of this record.
-     *
-     * @param fsValue
-     * @return result as success/failed
-    
-    public JSONObject setBrandNme(String fsValue) {
-        return setValue("sBrandNme", fsValue);
-    } */
-
-    
     
 }
