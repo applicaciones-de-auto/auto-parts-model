@@ -243,7 +243,7 @@ public class Model_Inventory_Model implements GEntity {
         //replace the condition based on the primary key column of the record
         lsSQL = MiscUtil.addCondition(lsSQL, " a.sStockIDx = " + SQLUtil.toSQL(fsValue)
                                                + " AND a.sModelCde = " + SQLUtil.toSQL(fsValue2));
-
+        System.out.println(lsSQL);
         ResultSet loRS = poGRider.executeQuery(lsSQL);
 
         try {
@@ -258,6 +258,7 @@ public class Model_Inventory_Model implements GEntity {
                 poJSON.put("message", "Record loaded successfully.");
             } else {
                 poJSON.put("result", "error");
+                poJSON.put("continue", true);
                 poJSON.put("message", "No record to load.");
             }
         } catch (SQLException e) {
@@ -316,6 +317,7 @@ public class Model_Inventory_Model implements GEntity {
                         }
                     } else {
                         poJSON.put("result", "success");
+                        poJSON.put("continue", true);
                         poJSON.put("message", "No updates has been made.");
                     }
                 } else {
@@ -416,7 +418,7 @@ public class Model_Inventory_Model implements GEntity {
                 + "  , c.sMakeIDxx "                                         
                 + "  , c.sMakeDesc "                                         
                 + " FROM inventory_model a "                                 
-                + " LEFT JOIN vehicle_model b ON b.sModelCde = a.sModelCde " 
+                + " LEFT JOIN vehicle_model b ON b.sModelIDx = a.sModelCde " 
                 + " LEFT JOIN vehicle_make c ON c.sMakeIDxx = b.sMakeIDxx  "   ;
     }
     
