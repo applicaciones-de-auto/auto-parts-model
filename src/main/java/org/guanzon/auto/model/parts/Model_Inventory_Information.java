@@ -6,7 +6,6 @@
 package org.guanzon.auto.model.parts;
 
 import java.lang.reflect.Method;
-import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -25,7 +24,7 @@ import org.json.simple.JSONObject;
  */
 public class Model_Inventory_Information implements GEntity {
 
-    final String XML = "Model_Inventory_Master.xml";
+    final String XML = "Model_Inventory_Information.xml";
 
     GRider poGRider;                //application driver
     CachedRowSet poEntity;          //rowset
@@ -56,6 +55,12 @@ public class Model_Inventory_Information implements GEntity {
             poEntity.moveToInsertRow();
 
             MiscUtil.initRowSet(poEntity);
+            poEntity.updateDouble("nUnitPrce",0.00);
+            poEntity.updateDouble("nSelPrice",0.00);
+            poEntity.updateDouble("nDiscLev1",0.00);
+            poEntity.updateDouble("nDiscLev2",0.00);
+            poEntity.updateDouble("nDiscLev3",0.00);
+            poEntity.updateDouble("nDealrDsc",0.00);
             poEntity.updateString("cRecdStat", RecordStatus.ACTIVE);
 
             poEntity.insertRow();
@@ -220,7 +225,7 @@ public class Model_Inventory_Information implements GEntity {
         pnEditMode = EditMode.ADDNEW;
 
         //replace with the primary key column info
-        setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()));
+        setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()+"ST"));
 
         poJSON = new JSONObject();
         poJSON.put("result", "success");
@@ -230,17 +235,17 @@ public class Model_Inventory_Information implements GEntity {
     /**
      * Opens a record.
      *
-     * @param fsCondition - filter values
+     * @param fsValue - filter values
      * @return result as success/failed
      */
     @Override
-    public JSONObject openRecord(String fsCondition) {
+    public JSONObject openRecord(String fsValue) {
         poJSON = new JSONObject();
 
-        String lsSQL = MiscUtil.makeSelect(this);
+        String lsSQL = getSQL();
 
         //replace the condition based on the primary key column of the record
-        lsSQL = MiscUtil.addCondition(lsSQL, " sStockIDx = " + SQLUtil.toSQL(fsCondition));
+        lsSQL = MiscUtil.addCondition(lsSQL, " a.sStockIDx = " + SQLUtil.toSQL(fsValue));
 
         ResultSet loRS = poGRider.executeQuery(lsSQL);
 
@@ -277,11 +282,15 @@ public class Model_Inventory_Information implements GEntity {
 
         if (pnEditMode == EditMode.ADDNEW || pnEditMode == EditMode.UPDATE) {
             String lsSQL;
+            String lsExclude = "sBrandNme»sMeasurNm»sInvTypDs»sCatgeDs1";
+            
             if (pnEditMode == EditMode.ADDNEW) {
                 //replace with the primary key column info
-                setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()));
-
-                lsSQL = makeSQL();
+                setStockID(MiscUtil.getNextCode(getTable(), "sStockIDx", true, poGRider.getConnection(), poGRider.getBranchCode()+"ST"));
+                setModified(poGRider.getUserID());
+                setModifiedDte(poGRider.getServerDate());
+                
+                lsSQL = MiscUtil.makeSQL(this, lsExclude);
 
                 if (!lsSQL.isEmpty()) {
                     if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
@@ -302,8 +311,10 @@ public class Model_Inventory_Information implements GEntity {
                 JSONObject loJSON = loOldEntity.openRecord(this.getStockID());
 
                 if ("success".equals((String) loJSON.get("result"))) {
+                    setModified(poGRider.getUserID());
+                    setModifiedDte(poGRider.getServerDate());
                     //replace the condition based on the primary key column of the record
-                    lsSQL = MiscUtil.makeSQL(this, loOldEntity, "sStockIDx = " + SQLUtil.toSQL(this.getStockID()));
+                    lsSQL = MiscUtil.makeSQL(this, loOldEntity, "sStockIDx = " + SQLUtil.toSQL(this.getStockID()),lsExclude);
 
                     if (!lsSQL.isEmpty()) {
                         if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
@@ -386,52 +397,51 @@ public class Model_Inventory_Information implements GEntity {
         return MiscUtil.makeSelect(this);
     }
     
-    private String getSQL() {                                                              
-        return " SELECT "                                                              
-                    + " a.sStockIDx "                                                  
-                    + " ,a.sBarCodex "                                                 
-                    + " ,a.sDescript "                                                 
-                    + " , IFNULL(a.sBriefDsc, '') sBriefDsc "                          
-                    + " , IFNULL(a.sCategCd1, '') sCategCd1 "                          
-                    + " , IFNULL(a.sCategCd2, '') sCategCd2 "                          
-                    + " , IFNULL(a.sCategCd3, '') sCategCd3 "                          
-                    + " , IFNULL(a.sCategCd4, '') sCategCd4 "                          
-                    + " , IFNULL(a.sModelCde, '') sModelCde "                          
-                    + " , IFNULL(a.sMeasurID, '') sMeasurID "                          
-                    + " , IFNULL(a.sInvTypCd, '') sInvTypCd "                          
-                    + " ,a.nUnitPrce "                                                 
-                    + " ,a.nSelPrice "                                                 
-                    + " ,a.nDiscLev1 "                                                 
-                    + " ,a.nDiscLev2 "                                                 
-                    + " ,a.nDiscLev3 "                                                 
-                    + " ,a.nDealrDsc "                                                 
-                    + " , IFNULL(a.cComboInv, '') cComboInv "                          
-                    + " , IFNULL(a.cWthPromo, '') cWthPromo "                          
-                    + " , IFNULL(a.cUnitType, '') cUnitType "                          
-                    + " , IFNULL(a.cInvStatx, '') cInvStatx "                          
-                    + " , IFNULL(a.cGenuinex, '') cGenuinex "                          
-                    + " , IFNULL(a.cReplacex, '') cReplacex "                          
-                    + " , IFNULL(a.sSupersed, '') sSupersed "                          
-                    + " , IFNULL(a.sFileName, '') sFileName "                          
-                    + " , IFNULL(a.sTrimBCde, '') sTrimBCde "                          
-                    + " , IFNULL(a.cRecdStat, '') cRecdStat "                          
-                    + " , IFNULL(a.sModified, '') sModified "                          
-                    + " ,a.dModified "                                             
-                    + " , IFNULL(b.sDescript, '') sBrandNme "                          
-                    + " , IFNULL(c.sDescript, '') sCategNme "                          
-                    + " , IFNULL(d.sMeasurNm, '') sMeasurNm "                          
-                    + " , IFNULL(e.sDescript, '') sInvTypNm "                          
-                    + " , IFNULL(f.sLocatnID, '') sLocatnID "                          
-                    + " , IFNULL(g.sLocatnDs, '') sLocatnDs "                          
-                    + " FROM inventory a "                                             
-                    + " LEFT JOIN brand b ON b.sStockIDx = a.sStockIDx  "              
-                    + " LEFT JOIN inventory_category c ON c.sCategrCd = a.sCategCd1 "  
-                    + " LEFT JOIN measure d ON d.sMeasurID = a.sMeasurID   "           
-                    + " LEFT JOIN inv_type e ON e.sInvTypCd = a.sInvTypCd  "           
-                    + " LEFT JOIN inv_master f on f.sStockIDx = a.sStockIDx  "         
-                    + " LEFT JOIN item_location g on g.sLocatnID = f.sLocatnID  ";		 
-    }                                                                                  
-
+    public String getSQL(){
+        return    " SELECT "                                           
+                + "    a.sStockIDx "                                   
+                + "  , a.sBarCodex "                                   
+                + "  , a.sDescript "                                   
+                + "  , a.sBriefDsc "                                   
+                + "  , a.sAltBarCd "                                   
+                + "  , a.sCategCd1 "                                   
+                + "  , a.sCategCd2 "                                   
+                + "  , a.sCategCd3 "                                   
+                + "  , a.sCategCd4 "                                   
+                + "  , a.sBrandCde "                                    
+                + "  , a.sColorCde "                                   
+                + "  , a.sMeasurID "                                   
+                + "  , a.sInvTypCd "                                   
+                + "  , a.nUnitPrce "                                   
+                + "  , a.nSelPrice "                                   
+                + "  , a.nDiscLev1 "                                   
+                + "  , a.nDiscLev2 "                                   
+                + "  , a.nDiscLev3 "                                   
+                + "  , a.nDealrDsc "                                   
+                + "  , a.cComboInv "                                   
+                + "  , a.cWthPromo "                                   
+                + "  , a.cSerialze "                                   
+                + "  , a.cUnitType "                                   
+                + "  , a.cInvStatx "                                   
+                + "  , a.cGenuinex "                                   
+                + "  , a.cReplacex "                                   
+                + "  , a.sSupersed "                                   
+                + "  , a.sFileName "                                   
+                + "  , a.sTrimBCde "                                   
+                + "  , a.cRecdStat "                                   
+                + "  , a.sModified "                                   
+                + "  , a.dModified "                                   
+                + "  , b.sDescript AS sBrandNme "                      
+                + "  , c.sMeasurNm "                                   
+                + "  , d.sDescript AS sInvTypDs " 
+                + "  , e.sDescript AS sCatgeDs1 "                      
+                + " FROM inventory a "                                 
+                + " LEFT JOIN brand b ON b.sBrandCde = a.sBrandCde    "
+                + " LEFT JOIN measure c ON c.sMeasurID = a.sMeasurID  "
+                + " LEFT JOIN inv_type d ON d.sInvTypCd = a.sInvTypCd " 
+                + " LEFT JOIN inventory_category e ON e.sCategrCd = a.sCategCd1 "      ;
+    }
+    
     /**
      * Description: Sets the ID of this record.
      *
@@ -498,6 +508,23 @@ public class Model_Inventory_Information implements GEntity {
      */
     public String getBriefDsc() {
         return (String) getValue("sBriefDsc");
+    }
+    
+    /**
+     * Description: Sets the Value of this record.
+     *
+     * @param fsValue
+     * @return result as success/failed
+     */
+    public JSONObject setAltBarCd(String fsValue) {
+        return setValue("sAltBarCd", fsValue);
+    }
+
+    /**
+     * @return The Value of this record.
+     */
+    public String getAltBarCd() {
+        return (String) getValue("sAltBarCd");
     }
     
     /**
@@ -574,6 +601,23 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
+    public JSONObject setBrandCde(String fsValue) {
+        return setValue("sBrandCde", fsValue);
+    }
+
+    /**
+     * @return The Value of this record.
+     */
+    public String getBrandCde() {
+        return (String) getValue("sBrandCde");
+    }
+    
+    /**
+     * Description: Sets the Value of this record.
+     *
+     * @param fsValue
+     * @return result as success/failed
+     */
     public JSONObject setModelCde(String fsValue) {
         return setValue("sModelCde", fsValue);
     }
@@ -583,6 +627,23 @@ public class Model_Inventory_Information implements GEntity {
      */
     public String getModelCde() {
         return (String) getValue("sModelCde");
+    }
+    
+    /**
+     * Description: Sets the Value of this record.
+     *
+     * @param fsValue
+     * @return result as success/failed
+     */
+    public JSONObject setColorCde(String fsValue) {
+        return setValue("sColorCde", fsValue);
+    }
+
+    /**
+     * @return The Value of this record.
+     */
+    public String getColorCde() {
+        return (String) getValue("sColorCde");
     }
     
     /**
@@ -622,103 +683,103 @@ public class Model_Inventory_Information implements GEntity {
     /**
      * Description: Sets the Value of this record.
      *
-     * @param fnValue
+     * @param fdbValue
      * @return result as success/failed
      */
-    public JSONObject setUnitPrce(Double fnValue) {
-        return setValue("nUnitPrce", fnValue);
+    public JSONObject setUnitPrce(Double fdbValue) {
+        return setValue("nUnitPrce", fdbValue);
     }
 
     /**
      * @return The Value of this record.
      */
     public Double getUnitPrce() {
-        return (Double) getValue("nUnitPrce");
+        return Double.parseDouble(String.valueOf(getValue("nUnitPrce")));
     }
     
     /**
      * Description: Sets the Value of this record.
      *
-     * @param fnValue
+     * @param fdbValue
      * @return result as success/failed
      */
-    public JSONObject setSelPrice(Double fnValue) {
-        return setValue("nSelPrice", fnValue);
+    public JSONObject setSelPrice(Double fdbValue) {
+        return setValue("nSelPrice", fdbValue);
     }
 
     /**
      * @return The Value of this record.
      */
     public Double getSelPrice() {
-        return (Double) getValue("nSelPrice");
+        return Double.parseDouble(String.valueOf(getValue("nSelPrice")));
     }
     
     /**
      * Description: Sets the Value of this record.
      *
-     * @param fnValue
+     * @param fdbValue
      * @return result as success/failed
      */
-    public JSONObject setDiscLev1(Double fnValue) {
-        return setValue("nDiscLev1", fnValue);
+    public JSONObject setDiscLev1(Double fdbValue) {
+        return setValue("nDiscLev1", fdbValue);
     }
 
     /**
      * @return The Value of this record.
      */
     public Double getDiscLev1() {
-        return (Double) getValue("nDiscLev1");
+        return Double.parseDouble(String.valueOf(getValue("nDiscLev1")));
     }
     
     /**
      * Description: Sets the Value of this record.
      *
-     * @param fnValue
+     * @param fdbValue
      * @return result as success/failed
      */
-    public JSONObject setDiscLev2(Double fnValue) {
-        return setValue("nDiscLev2", fnValue);
+    public JSONObject setDiscLev2(Double fdbValue) {
+        return setValue("nDiscLev2", fdbValue);
     }
 
     /**
      * @return The Value of this record.
      */
     public Double getDiscLev2() {
-        return (Double) getValue("nDiscLev2");
+        return Double.parseDouble(String.valueOf(getValue("nDiscLev2")));
     }
     
     /**
      * Description: Sets the Value of this record.
      *
-     * @param fnValue
+     * @param fdbValue
      * @return result as success/failed
      */
-    public JSONObject setDiscLev3(Double fnValue) {
-        return setValue("nDiscLev3", fnValue);
+    public JSONObject setDiscLev3(Double fdbValue) {
+        return setValue("nDiscLev3", fdbValue);
     }
 
     /**
      * @return The Value of this record.
      */
     public Double getDiscLev3() {
-        return (Double) getValue("nDiscLev3");
+        return Double.parseDouble(String.valueOf(getValue("nDiscLev3")));
     }
     
     /**
      * Description: Sets the Value of this record.
      *
-     * @param fnValue
+     * @param fdbValue
      * @return result as success/failed
      */
-    public JSONObject setDealrDsc(Double fnValue) {
-        return setValue("nDealrDsc", fnValue);
+    public JSONObject setDealrDsc(Double fdbValue) {
+        return setValue("nDealrDsc", fdbValue);
     }
 
     /**
      * @return The Value of this record.
      */
     public Double getDealrDsc() {
-        return (Double) getValue("nDealrDsc");
+        return Double.parseDouble(String.valueOf(getValue("nDealrDsc")));
     }
     
     /**
@@ -761,6 +822,23 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
+    public JSONObject setSerialze(String fsValue) {
+        return setValue("cSerialze", fsValue);
+    }
+
+    /**
+     * @return The Value of this record.
+     */
+    public String getSerialze() {
+        return (String) getValue("cSerialze");
+    }
+    
+    /**
+     * Description: Sets the Value of this record.
+     *
+     * @param fsValue
+     * @return result as success/failed
+     */
     public JSONObject setUnitType(String fsValue) {
         return setValue("cUnitType", fsValue);
     }
@@ -778,14 +856,14 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
-    public JSONObject setInvStatx(String fsValue) {
+    public JSONObject setInvStat(String fsValue) {
         return setValue("cInvStatx", fsValue);
     }
 
     /**
      * @return The Value of this record.
      */
-    public String getInvStatx() {
+    public String getInvStat() {
         return (String) getValue("cInvStatx");
     }
     
@@ -795,14 +873,14 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
-    public JSONObject setGenuinex(String fsValue) {
+    public JSONObject setGenuine(String fsValue) {
         return setValue("cGenuinex", fsValue);
     }
 
     /**
      * @return The Value of this record.
      */
-    public String getGenuinex() {
+    public String getGenuine() {
         return (String) getValue("cGenuinex");
     }
     
@@ -812,14 +890,14 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
-    public JSONObject setReplacex(String fsValue) {
+    public JSONObject setReplace(String fsValue) {
         return setValue("cReplacex", fsValue);
     }
 
     /**
      * @return The Value of this record.
      */
-    public String getReplacex() {
+    public String getReplace() {
         return (String) getValue("cReplacex");
     }
     
@@ -887,7 +965,7 @@ public class Model_Inventory_Information implements GEntity {
     /**
      * @return The Value of this record.
      */
-    public String gsetRecdStat() {
+    public String getRecdStat() {
         return (String) getValue("cRecdStat");
     }
     
@@ -931,15 +1009,15 @@ public class Model_Inventory_Information implements GEntity {
      * @param fdValue
      * @return result as success/failed
      */
-    public JSONObject setModifiedDte(Date fdValue) {
+    public JSONObject setModifiedDte(java.util.Date fdValue) {
         return setValue("dModified", fdValue);
     }
 
     /**
      * @return The date and time the record was modified.
      */
-    public Date getModifiedDte() {
-        return (Date) getValue("dModified");
+    public java.util.Date getModifiedDte() {
+        return (java.util.Date) getValue("dModified");
     }
     
     /**
@@ -965,23 +1043,6 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
-    public JSONObject setCategNme(String fsValue) {
-        return setValue("sCategNme", fsValue);
-    }
-
-    /**
-     * @return The Value of this record.
-     */
-    public String getCategNme() {
-        return (String) getValue("sCategNme");
-    }
-    
-    /**
-     * Description: Sets the Value of this record.
-     *
-     * @param fsValue
-     * @return result as success/failed
-     */
     public JSONObject setMeasurNm(String fsValue) {
         return setValue("sMeasurNm", fsValue);
     }
@@ -999,15 +1060,15 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
-    public JSONObject setInvTypNm(String fsValue) {
-        return setValue("sInvTypNm", fsValue);
+    public JSONObject setInvTypDs(String fsValue) {
+        return setValue("sInvTypDs", fsValue);
     }
 
     /**
      * @return The Value of this record.
      */
-    public String getInvTypNm() {
-        return (String) getValue("sInvTypNm");
+    public String getInvTypDs() {
+        return (String) getValue("sInvTypDs");
     }
     
     /**
@@ -1016,32 +1077,15 @@ public class Model_Inventory_Information implements GEntity {
      * @param fsValue
      * @return result as success/failed
      */
-    public JSONObject setLocatnID(String fsValue) {
-        return setValue("sLocatnID", fsValue);
+    public JSONObject setCatgeDs1(String fsValue) {
+        return setValue("sCatgeDs1", fsValue);
     }
 
     /**
      * @return The Value of this record.
      */
-    public String getLocatnID() {
-        return (String) getValue("sLocatnID");
-    }
-    
-    /**
-     * Description: Sets the Value of this record.
-     *
-     * @param fsValue
-     * @return result as success/failed
-     */
-    public JSONObject setLocatnDs(String fsValue) {
-        return setValue("sLocatnDs", fsValue);
-    }
-
-    /**
-     * @return The Value of this record.
-     */
-    public String getLocatnDs() {
-        return (String) getValue("sLocatnDs");
+    public String getCatgeDs1() {
+        return (String) getValue("sCatgeDs1");
     }
 }
 
