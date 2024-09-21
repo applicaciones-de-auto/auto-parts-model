@@ -30,6 +30,8 @@ public class Model_Inventory_Information implements GEntity {
     CachedRowSet poEntity;          //rowset
     JSONObject poJSON;              //json container
     int pnEditMode;                 //edit mode
+    
+    String psExclude = "sBrandNme»sMeasurNm»sInvTypDs»sCatgeDs1";
 
     /**
      * Entity constructor
@@ -282,7 +284,6 @@ public class Model_Inventory_Information implements GEntity {
 
         if (pnEditMode == EditMode.ADDNEW || pnEditMode == EditMode.UPDATE) {
             String lsSQL;
-            String lsExclude = "sBrandNme»sMeasurNm»sInvTypDs»sCatgeDs1";
             
             if (pnEditMode == EditMode.ADDNEW) {
                 //replace with the primary key column info
@@ -290,7 +291,7 @@ public class Model_Inventory_Information implements GEntity {
                 setModified(poGRider.getUserID());
                 setModifiedDte(poGRider.getServerDate());
                 
-                lsSQL = MiscUtil.makeSQL(this, lsExclude);
+                lsSQL = MiscUtil.makeSQL(this, psExclude);
 
                 if (!lsSQL.isEmpty()) {
                     if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
@@ -314,7 +315,7 @@ public class Model_Inventory_Information implements GEntity {
                     setModified(poGRider.getUserID());
                     setModifiedDte(poGRider.getServerDate());
                     //replace the condition based on the primary key column of the record
-                    lsSQL = MiscUtil.makeSQL(this, loOldEntity, "sStockIDx = " + SQLUtil.toSQL(this.getStockID()),lsExclude);
+                    lsSQL = MiscUtil.makeSQL(this, loOldEntity, "sStockIDx = " + SQLUtil.toSQL(this.getStockID()),psExclude);
 
                     if (!lsSQL.isEmpty()) {
                         if (poGRider.executeQuery(lsSQL, getTable(), poGRider.getBranchCode(), "") > 0) {
@@ -385,7 +386,7 @@ public class Model_Inventory_Information implements GEntity {
      * @return SQL Statement
      */
     public String makeSQL() {
-        return MiscUtil.makeSQL(this, "");
+        return MiscUtil.makeSQL(this, psExclude);
     }
     
     /**
@@ -394,7 +395,7 @@ public class Model_Inventory_Information implements GEntity {
      * @return SQL Select Statement
      */
     public String makeSelectSQL() {
-        return MiscUtil.makeSelect(this);
+        return MiscUtil.makeSelect(this, psExclude);
     }
     
     public String getSQL(){
